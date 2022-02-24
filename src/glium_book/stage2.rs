@@ -2,10 +2,10 @@
 use std::hash::Hasher;
 
 use crossterm::event::KeyCode;
-use glium::glutin::{
+use glium::{glutin::{
     self,
     event::{KeyboardInput, VirtualKeyCode},
-};
+}, buffer};
 use glium::{
     implement_vertex,
     Display,
@@ -28,9 +28,9 @@ fn first_triangle() -> [Vertex; 3] {
     [vertex1, vertex2, vertex3]
 }
 
-fn buffer_a_shape(display: &Display, shape: &Vec<Vertex>) -> glium::VertexBuffer<Vertex> {
+fn buffer_a_shape(display: &Display, shape: &[Vertex]) -> glium::vertex::VertexBuffer<Vertex> {
     // Takes a CPU-memory stored shape and uploads it to the video card memory.
-    glium::VertexBuffer::new(display as &dyn Facade, shape).unwrap()
+    glium::vertex::VertexBuffer::new(display as &dyn Facade, shape).unwrap()
 }
 
 fn dummy_marker() -> glium::index::NoIndices{
@@ -80,6 +80,16 @@ pub fn run() {
     event_loop.run(move |event, _, control_flow| {
         let mut frame = display.draw();
         frame.clear_color(0.1, 0.1, 0.9, 1.0);
+
+        // Drawing the Triangle!
+        frame.draw(
+            &buffer_a_shape(&display, &first_triangle()[..]),
+            dummy_marker(),
+            &the_program(&display),
+            &glium::uniforms::EmptyUniforms,
+            &Default::default()
+        ).unwrap();
+
         frame.finish().unwrap();
 
         let next_frame_time = std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
