@@ -1,5 +1,11 @@
+use std::hash::Hasher;
+
 use crossterm::event::KeyCode;
-use glium::glutin::{self, event::{KeyboardInput, VirtualKeyCode}};
+use glium::glutin::{
+    self,
+    event::{KeyboardInput, VirtualKeyCode}
+};
+use glium::Surface;
 
 pub fn run() {
     let mut event_loop = glutin::event_loop::EventLoop::new();
@@ -12,6 +18,10 @@ pub fn run() {
     ).unwrap();
 
     event_loop.run(move |event, _, control_flow| {
+        let mut frame = display.draw();
+        frame.clear_color(0.1, 0.1, 0.9, 1.0);
+        frame.finish().unwrap();
+
         let next_frame_time = std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
 
         *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
