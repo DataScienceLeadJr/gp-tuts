@@ -7,6 +7,7 @@ use crossterm::{
 
 mod stage1;
 mod stage2;
+mod stage3;
 
 const LATEST_COMPLETED_STAGE: usize = 2;
 
@@ -22,6 +23,7 @@ pub fn entrypoint(stage: Option<usize>) {
         match which_stage {
             1 => stage1::run(),
             2 => stage2::run(),
+            3 => stage3::run(),
             _ => todo!("I'M WORKING ON IT!"),
         }
     }
