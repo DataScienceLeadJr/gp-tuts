@@ -1,10 +1,10 @@
 use std::hash::Hasher;
 
 use crossterm::event::KeyCode;
-use glium::glutin::{
+use glium::{glutin::{
     self,
     event::{KeyboardInput, VirtualKeyCode}
-};
+}, Program, Display, backend::Facade, uniform};
 use glium::Surface;
 
 use super::stage2::{
@@ -26,6 +26,26 @@ impl Anime for [Vertex; 3] {
     }
 }
 
+pub fn vertex_shader_src() -> &'static str {
+    r#"
+        #version 140
+
+        in vec2 position;
+
+        uniform float t; // UNIFORM meaning: global variable whose value is set for a draw call. aka. draw-context const variable.
+
+        void main() {
+            vec2 pos = position;
+            pos.x += t;
+            gl_Position = vec4(pos, 0.0, 1.0);
+        }
+    "#
+}
+
+pub fn the_stage3_program(display: &Display) -> Program {
+    Program::from_source(display as &dyn Facade, vertex_shader_src(), super::stage2::fragment_shader_src(), None).unwrap()
+}
+
 pub fn run() {
     let event_loop = glutin::event_loop::EventLoop::new();
     let window_builder = glutin::window::WindowBuilder::new();
@@ -37,8 +57,8 @@ pub fn run() {
     ).unwrap();
 
     let mut t: f32 = -0.5;
-
-    let mut triangle = first_triangle();
+    let triangle = first_triangle();
+    let vertex_buffer = buffer_a_shape(&display, &triangle);
 
     event_loop.run(move |event, _, control_flow| {
         match event {
@@ -69,9 +89,6 @@ pub fn run() {
         if t > 0.5 {
             t = -0.5;
         }
-
-        triangle.translate(t);
-        let vertex_buffer = buffer_a_shape(&display, &triangle);
         
         let mut frame = display.draw();
         frame.clear_color(0.1, 0.1, 0.9, 1.0);
@@ -79,8 +96,8 @@ pub fn run() {
         frame.draw(
             &vertex_buffer,
             &dummy_marker(),
-            &the_stage2_program(&display),
-            &glium::uniforms::EmptyUniforms,
+            &the_stage3_program(&display),
+            &uniform! { t: t }, // The first 't' here is arbitrarily named, except it has to match the uniform inside the shader code.
             &Default::default()
         ).unwrap();
         
