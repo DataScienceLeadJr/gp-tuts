@@ -21,24 +21,24 @@ struct Vertex {
 
 implement_vertex!(Vertex, position);
 
-fn first_triangle() -> [Vertex; 3] {
+pub fn first_triangle() -> [Vertex; 3] {
     let vertex1 = Vertex { position: [-0.5, -0.5]};
     let vertex2 = Vertex { position: [ 0.0, 0.5]};
     let vertex3 = Vertex { position: [ 0.5, -0.25]};
     [vertex1, vertex2, vertex3]
 }
 
-fn buffer_a_shape(display: &Display, shape: &[Vertex]) -> glium::vertex::VertexBuffer<Vertex> {
+pub fn buffer_a_shape(display: &Display, shape: &[Vertex]) -> glium::vertex::VertexBuffer<Vertex> {
     // Takes a CPU-memory stored shape and uploads it to the video card memory.
     glium::vertex::VertexBuffer::new(display as &dyn Facade, shape).unwrap()
 }
 
-fn dummy_marker() -> glium::index::NoIndices{
+pub fn dummy_marker() -> glium::index::NoIndices{
     // For when you don't really need the linking of vertices.
     glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList)
 }
 
-fn vertex_shader_src() -> &'static str {
+pub fn vertex_shader_src() -> &'static str {
     r#"
         #version 140
 
@@ -50,7 +50,7 @@ fn vertex_shader_src() -> &'static str {
     "#
 }
 
-fn fragment_shader_src() -> &'static str {
+pub fn fragment_shader_src() -> &'static str {
     // aka. pixel shader
     r#"
         #version 140
@@ -63,7 +63,7 @@ fn fragment_shader_src() -> &'static str {
     "#
 }
 
-fn the_program(display: &Display) -> Program {
+pub fn the_stage2_program(display: &Display) -> Program {
     Program::from_source(display as &dyn Facade, vertex_shader_src(), fragment_shader_src(), None).unwrap()
 }
 
@@ -85,7 +85,7 @@ pub fn run() {
         frame.draw(
             &buffer_a_shape(&display, &first_triangle()[..]),
             dummy_marker(),
-            &the_program(&display),
+            &the_stage2_program(&display),
             &glium::uniforms::EmptyUniforms,
             &Default::default()
         ).unwrap();
