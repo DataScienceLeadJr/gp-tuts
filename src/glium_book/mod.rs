@@ -6,8 +6,9 @@ use crossterm::{
 };
 
 mod stage1;
+mod stage2;
 
-const LATEST_COMPLETED_STAGE: usize = 0;
+const LATEST_COMPLETED_STAGE: usize = 1;
 
 pub const GLIUM: &str = "glium";
 
