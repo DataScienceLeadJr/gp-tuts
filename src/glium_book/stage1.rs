@@ -8,7 +8,7 @@ use glium::glutin::{
 use glium::Surface;
 
 pub fn run() {
-    let mut event_loop = glutin::event_loop::EventLoop::new();
+    let event_loop = glutin::event_loop::EventLoop::new();
     let window_builder = glutin::window::WindowBuilder::new();
     let context_builder = glutin::ContextBuilder::new();
     let display = glium::Display::new(
