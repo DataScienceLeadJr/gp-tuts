@@ -4,7 +4,7 @@ use crossterm::event::KeyCode;
 use glium::{glutin::{
     self,
     event::{KeyboardInput, VirtualKeyCode}
-}, Program, Display, backend::Facade, uniform, implement_vertex};
+}, Program, Display, backend::Facade, uniform, implement_vertex, Blend};
 use glium::Surface;
 use image::EncodableLayout;
 
@@ -210,7 +210,10 @@ pub fn run() {
             &dummy_marker(),
             &the_stage5_program(&display),
             &uniforms,
-            &Default::default()
+            &glium::DrawParameters {
+                blend: Blend::alpha_blending(),
+                ..Default::default()
+            },
         ).unwrap();
         
         frame.finish().unwrap();
