@@ -10,3 +10,4 @@ clap = { version = "3.1.2", features = ["derive"] }
 glium = "*"
 crossterm = "*"
 image = "*"
+bracket-noise = "0.8.2"

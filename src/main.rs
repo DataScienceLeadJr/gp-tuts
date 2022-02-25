@@ -29,12 +29,15 @@ fn main() -> crossterm::Result<()>{
     std::io::stdout().execute(Clear(ClearType::All))?;
     std::io::stdout().execute(cursor::MoveTo(0,0))?;
 
-    let args = Arg::parse();
+    // TODOING: getting perlin noise up and running in this his-hey!
+    
 
-    match args.tutorial.to_lowercase().as_str() {
-        glium_book::GLIUM => glium_book::entrypoint(args.stage),
-        _ => panic!("That's not even a tutorial! For God's Sake!..")
-    };
+    // let args = Arg::parse();
+
+    // match args.tutorial.to_lowercase().as_str() {
+    //     glium_book::GLIUM => glium_book::entrypoint(args.stage),
+    //     _ => panic!("That's not even a tutorial! For God's Sake!..")
+    // };
 
     Ok(())
 }
