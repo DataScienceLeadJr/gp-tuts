@@ -6,6 +6,7 @@ use glium::{glutin::{
     event::{KeyboardInput, VirtualKeyCode}
 }, Program, Display, backend::Facade, uniform, implement_vertex};
 use glium::Surface;
+use image::EncodableLayout;
 
 use crate::glium_book::stage2::{buffer_a_shape, dummy_marker};
 
@@ -77,18 +78,20 @@ pub fn fragment_shader_src() -> &'static str {
 
         out vec4 color;
 
-        uniform sampler2D tex;
+        uniform sampler2D tex_img;
+        uniform sampler2D tex_noise;
 
         void main() {
             // getting the sampled interpolated pixel attached to the corresponding position within the texture (image)
-            vec4 c_tex = texture(tex, v_tex_coords);
+            vec4 c_tex = texture(tex_noise, v_tex_coords);
 
             // moving the color spectrum up above 0 to remove the black third for the attrib.
-            vec2 c_attrib = (my_attr + 0.5001) * 0.45;
+            // vec2 c_attrib = (my_attr + 0.5001) * 0.45;
 
-            vec2 c = c_tex.rg + (c_attrib * 0.1);
+            // vec2 c = c_tex.rg + (c_attrib * 0.1);
             // this just sets x to red and y to green, blue to 0.0 and opacity to 1.0
-            color = vec4(c, 0.0, 1.0); // awesome
+            // color = vec4(c, 0.0, 1.0); // awesome
+            color = vec4(c_tex.rgb, c_tex.r); // TODO: figure out if the alpha-blending is a draw parameter I need to set.
         }
     "#
 }
@@ -110,14 +113,43 @@ pub fn run() {
     use std::io::Cursor;
     use image::load;
 
-    let image = load(Cursor::new(&include_bytes!("D:\\Projects\\Rust\\gp-tuts\\assets\\textures\\hamster.jpg")),
+    let image1 = load(Cursor::new(&include_bytes!("D:\\Projects\\Rust\\gp-tuts\\assets\\textures\\hamster.jpg")),
                         image::ImageFormat::Jpeg).unwrap().to_rgb8();
-    let image_dimensions = image.dimensions();
-    let image = glium::texture::RawImage2d::from_raw_rgb_reversed(&image.into_raw(), image_dimensions);
+    let image_dimensions = image1.dimensions();
 
-    let texture = glium::texture::texture2d::Texture2d::new(&display, image).unwrap();
+    let tex_image = glium::texture::RawImage2d::from_raw_rgb_reversed(&image1.into_raw(), image_dimensions);
+    let tex_img = glium::texture::texture2d::Texture2d::new(&display, tex_image).unwrap();
+    
+    // TODOING: getting perlin noise up and running in this his-hey!
 
+    use bracket_noise::prelude::*;
 
+    let mut noise = FastNoise::seeded(21);
+    noise.set_noise_type(NoiseType::PerlinFractal);
+    noise.set_fractal_type(FractalType::FBM);
+    noise.set_fractal_octaves(5);
+    noise.set_fractal_gain(0.6);
+    noise.set_fractal_lacunarity(2.0);
+    noise.set_frequency(2.0);
+
+    let wh = ((image_dimensions.0 + image_dimensions.1) as f32 / 2.0) as u32;
+    let mut img = image::RgbaImage::new(wh, wh);
+    for (x, y, pixel) in img.enumerate_pixels_mut() {
+        let n = ((255.0 * noise.get_noise((x as f32) / 160.0, (y as f32) / 100.0)) as u8).clamp(0, 255);
+        *pixel =
+                image::Rgba(
+                    [n,
+                    n,
+                    n,
+                    250
+                ]
+            )
+        ;
+    }
+    // img.save("test_rgba.png").unwrap();
+    let noise_image = 
+            glium::texture::RawImage2d::from_raw_rgba_reversed(&img.into_raw(), (wh, wh));
+    let tex_noise = glium::texture::texture2d::Texture2d::new(&display, noise_image).unwrap();
 
     let mut t: f32 = -0.5;
     let triangle = texture_triangle();
@@ -166,7 +198,8 @@ pub fn run() {
                 [0.0, 0.0, 1.0, 0.0],
                 [0.0, 0.0, 0.0, 1.0f32],
             ],
-            tex: &texture,
+            tex_img: &tex_img,
+            tex_noise: &tex_noise,
         };
         
         let mut frame = display.draw();
