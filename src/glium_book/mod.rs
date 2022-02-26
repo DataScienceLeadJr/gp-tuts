@@ -11,6 +11,7 @@ mod stage3;
 mod stage4;
 mod stage5;
 mod stage6;
+mod stage7;
 
 const LATEST_COMPLETED_STAGE: usize = 6;
 
@@ -30,6 +31,7 @@ pub fn entrypoint(stage: Option<usize>) {
             4 => stage4::run(),
             5 => stage5::run(),
             6 => stage6::run(),
+            7 => stage7::run(),
             _ => todo!("I'M WORKING ON IT!"),
         }
     }
