@@ -5,7 +5,7 @@ use crossterm::event::KeyCode;
 use glium::{glutin::{
     self,
     event::{KeyboardInput, VirtualKeyCode},
-}, buffer};
+}, buffer, uniform};
 use glium::{
     implement_vertex,
     Display,
@@ -16,38 +16,17 @@ use glium::{
 
 use super::teapot;
 
-#[derive(Copy, Clone)]
-pub struct Vertex {
-    pub position: [f32; 2],
-}
-
-implement_vertex!(Vertex, position);
-
-pub fn first_triangle() -> [Vertex; 3] {
-    let vertex1 = Vertex { position: [-0.5, -0.5]};
-    let vertex2 = Vertex { position: [ 0.0, 0.5]};
-    let vertex3 = Vertex { position: [ 0.5, -0.25]};
-    [vertex1, vertex2, vertex3]
-}
-
-pub fn buffer_a_shape(display: &Display, shape: &[Vertex]) -> glium::vertex::VertexBuffer<Vertex> {
-    // Takes a CPU-memory stored shape and uploads it to the video card memory.
-    glium::vertex::VertexBuffer::new(display as &dyn Facade, shape).unwrap()
-}
-
-pub fn dummy_marker() -> glium::index::NoIndices{
-    // For when you don't really need the linking of vertices.
-    glium::index::NoIndices(glium::index::PrimitiveType::TrianglesList)
-}
-
 pub fn vertex_shader_src() -> &'static str {
     r#"
         #version 140
 
-        in vec2 position; // vec2 = [f32; 2] in Rust, name only required to match struct data field, name in-and-of-itself doesn't matter.
+        in vec3 position;
+        in vec3 normal;
+
+        uniform mat4 matrix;
 
         void main() {
-            gl_Position = vec4(position, 0.0, 1.0); // coordinates are actually 4D, x/y/z/? is this for quarternion-ing?
+            gl_Position = matrix * vec4(position, 1.0); // the position is 4D because: the window space is 3D, and the 3 dimensions are divided by the 4th after the shader has been executed, and is then discarded.
         }
     "#
 }
@@ -60,7 +39,7 @@ pub fn fragment_shader_src() -> &'static str {
         out vec4 color;
 
         void main() {
-            color = vec4(0.9, 0.15, 0.1, 1.0);
+            color = vec4(0.98, 0.15, 0.1, 1.0);
         }
     "#
 }
@@ -79,24 +58,11 @@ pub fn run() {
         &event_loop
     ).unwrap();
 
+    let positions = glium::VertexBuffer::new(&display, &teapot::VERTICES).unwrap();
+    let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
+    let indices = glium::IndexBuffer::new(&display, glium::index::PrimitiveType::TrianglesList, &teapot::INDICES).unwrap();
+
     event_loop.run(move |event, _, control_flow| {
-        let mut frame = display.draw();
-        frame.clear_color(0.1, 0.1, 0.9, 1.0);
-
-        // Drawing the Triangle!
-        frame.draw(
-            &buffer_a_shape(&display, &first_triangle()[..]),
-            dummy_marker(),
-            &the_stage7_program(&display),
-            &glium::uniforms::EmptyUniforms,
-            &Default::default()
-        ).unwrap();
-
-        frame.finish().unwrap();
-
-        let next_frame_time = std::time::Instant::now() + std::time::Duration::from_nanos(16_666_667);
-
-        *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
 
         match event {
             glutin::event::Event::WindowEvent { event, .. } => match event {
@@ -108,12 +74,44 @@ pub fn run() {
                     input: KeyboardInput { virtual_keycode: Some(virtual_code), state, .. },
                     ..
                 } => match (virtual_code, state) {
-                    (VirtualKeyCode::Escape, _) => *control_flow = glutin::event_loop::ControlFlow::Exit,
+                    (VirtualKeyCode::Escape, _) => {
+                        *control_flow = glutin::event_loop::ControlFlow::Exit;
+                        return;
+                    }
                     _ => return,
                 },
                 _ => return,
             },
             _ => (),
         }
+
+        let matrix = [
+            [0.0065, 0.0, 0.0, 0.0],
+            [0.0, 0.01, 0.0, 0.0],
+            [0.0, 0.0, 0.01, 0.0],
+            [0.0, 0.0, 0.0, 1.0f32],
+        ];
+
+        let uniforms = uniform! {
+            matrix: matrix,
+        };
+
+        let mut frame = display.draw();
+        frame.clear_color(0.1, 0.1, 0.9, 1.0);
+
+        // Drawing the Triangle!
+        frame.draw(
+            (&positions, &normals),
+            &indices,
+            &the_stage7_program(&display),
+            &uniforms,
+            &Default::default()
+        ).unwrap();
+
+        frame.finish().unwrap();
+
+        let next_frame_time = std::time::Instant::now() + std::time::Duration::from_nanos(666_667);
+
+        *control_flow = glutin::event_loop::ControlFlow::WaitUntil(next_frame_time);
     });
 }
