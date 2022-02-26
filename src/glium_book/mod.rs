@@ -13,6 +13,8 @@ mod stage5;
 mod stage6;
 mod stage7;
 
+mod teapot;
+
 const LATEST_COMPLETED_STAGE: usize = 6;
 
 pub const GLIUM: &str = "glium";
