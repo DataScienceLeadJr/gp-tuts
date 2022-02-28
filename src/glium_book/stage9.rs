@@ -53,7 +53,7 @@ pub fn fragment_shader_src() -> &'static str {
     "#
 }
 
-pub fn the_stage8_program(display: &Display) -> Program {
+pub fn the_stage9_program(display: &Display) -> Program {
     Program::from_source(display as &dyn Facade, vertex_shader_src(), fragment_shader_src(), None).unwrap()
 }
 
@@ -123,7 +123,7 @@ pub fn run() {
         frame.draw(
             (&positions, &normals),
             &indices,
-            &the_stage8_program(&display),
+            &the_stage9_program(&display),
             &uniforms,
             &params,
         ).unwrap();
