@@ -25,11 +25,12 @@ pub fn vertex_shader_src() -> &'static str {
 
         out vec3 v_normal;
 
+        uniform mat4 perspective;
         uniform mat4 matrix;
 
         void main() {
             v_normal = transpose(inverse(mat3(matrix))) * normal;
-            gl_Position = matrix * vec4(position, 1.0);
+            gl_Position = perspective * matrix * vec4(position, 1.0);
         }
     "#
 }
@@ -45,8 +46,8 @@ pub fn fragment_shader_src() -> &'static str {
 
         void main() {
             float brightness = dot(normalize(v_normal), normalize(u_light));
-            vec3 dark_color = vec3(0.55, 0.01, 0.09);
-            vec3 regular_color = vec3(1.0, 0.09, 0.05);
+            vec3 dark_color = vec3(0.555, 0.007, 0.075);
+            vec3 regular_color = vec3(1.0, 0.09, 0.045);
             // mix = lerp
             color = vec4(mix(dark_color, regular_color, brightness), 1.0);
         }
@@ -94,20 +95,39 @@ pub fn run() {
             _ => (),
         }
 
+        let mut frame = display.draw();
+        frame.clear_color_and_depth((0.06, 0.075, 0.95, 1.0), 1.0);
+            
+        let perspective = {
+            let (width, height) = frame.get_dimensions();
+            let aspect_ratio = height as f32 / width as f32;
+
+            let fov: f32 = 3.141592 / 3.0; // user parameter
+            let zfar = 1024.0; // can't move object farther or nearer than these
+            let znear = 0.1;  // two values here.
+
+            let f = 1.0 / (fov / 2.0).tan();
+
+            [
+                [f * aspect_ratio   ,   0.0 ,           0.0     ,               0.0],
+                [   0.0             ,   f   ,           0.0     ,               0.0],
+                [   0.0             ,   0.0 ,    (zfar+znear)/(zfar-znear)  ,   1.0],
+                [   0.0             ,   0.0 , -(2.0*zfar*znear)/(zfar-znear),   0.0],
+            ]
+        };
+
         let matrix = [
-            [0.0065, 0.0, 0.0, 0.0],
+            [0.01, 0.0, 0.0, 0.0],
             [0.0, 0.01, 0.0, 0.0],
             [0.0, 0.0, 0.01, 0.0],
-            [0.0, 0.0, 0.0, 1.0f32],
+            [0.0, 0.0, 2.0, 1.0f32],
         ];
 
         let uniforms = uniform! {
             u_light: [-1.0, 0.8, 0.9f32],
             matrix: matrix,
+            perspective: perspective
         };
-
-        let mut frame = display.draw();
-        frame.clear_color_and_depth((0.06, 0.075, 0.95, 1.0), 1.0);
 
         // from here on we're finally getting into all of this! :D
         let params = glium::DrawParameters {
