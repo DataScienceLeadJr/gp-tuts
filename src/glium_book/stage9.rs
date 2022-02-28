@@ -45,8 +45,8 @@ pub fn fragment_shader_src() -> &'static str {
 
         void main() {
             float brightness = dot(normalize(v_normal), normalize(u_light));
-            vec3 dark_color = vec3(0.55, 0.04, 0.08);
-            vec3 regular_color = vec3(1.0, 0.02, 0.005);
+            vec3 dark_color = vec3(0.55, 0.01, 0.09);
+            vec3 regular_color = vec3(1.0, 0.09, 0.05);
             // mix = lerp
             color = vec4(mix(dark_color, regular_color, brightness), 1.0);
         }
