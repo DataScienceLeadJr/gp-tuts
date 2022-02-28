@@ -13,6 +13,7 @@ mod stage5;
 mod stage6;
 mod stage7;
 mod stage8;
+mod stage9;
 
 mod teapot;
 
@@ -23,7 +24,7 @@ pub const GLIUM: &str = "glium";
 pub fn entrypoint(stage: Option<usize>) {
     if stage.is_none() {
         execute!(stdout(), Print(format!("defaulting to latest completed stage: {}", LATEST_COMPLETED_STAGE))).ok();
-        stage7::run();
+        stage9::run();
     } else {
         let which_stage = stage.unwrap();
         execute!(stdout(), Print(format!("doing glium tutorial stage {}! :D", stage.unwrap()))).ok();
@@ -36,6 +37,7 @@ pub fn entrypoint(stage: Option<usize>) {
             6 => stage6::run(),
             7 => stage7::run(),
             8 => stage8::run(),
+            9 => stage9::run(),
             _ => todo!("I'M WORKING ON IT!"),
         }
     }
