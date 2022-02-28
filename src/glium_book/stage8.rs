@@ -18,28 +18,37 @@ use super::teapot;
 
 pub fn vertex_shader_src() -> &'static str {
     r#"
-        #version 140
+        #version 150
 
         in vec3 position;
         in vec3 normal;
 
+        out vec3 v_normal;
+
         uniform mat4 matrix;
 
         void main() {
+            v_normal = transpose(inverse(mat3(matrix))) * normal;
             gl_Position = matrix * vec4(position, 1.0);
         }
     "#
 }
 
 pub fn fragment_shader_src() -> &'static str {
-    // aka. pixel shader
     r#"
         #version 140
 
+        in vec3 v_normal;
         out vec4 color;
 
+        uniform vec3 u_light;
+
         void main() {
-            color = vec4(0.98, 0.15, 0.1, 1.0);
+            float brightness = dot(normalize(v_normal), normalize(u_light));
+            vec3 dark_color = vec3(0.55, 0.04, 0.08);
+            vec3 regular_color = vec3(1.0, 0.02, 0.005);
+            // mix = lerp
+            color = vec4(mix(dark_color, regular_color, brightness), 1.0);
         }
     "#
 }
@@ -51,7 +60,7 @@ pub fn the_stage8_program(display: &Display) -> Program {
 pub fn run() {
     let event_loop = glutin::event_loop::EventLoop::new();
     let window_builder = glutin::window::WindowBuilder::new();
-    let context_builder = glutin::ContextBuilder::new();
+    let context_builder = glutin::ContextBuilder::new().with_depth_buffer(24); // 24 is apparently just a "common value"
     let display = glium::Display::new(
         window_builder,
         context_builder,
@@ -93,19 +102,30 @@ pub fn run() {
         ];
 
         let uniforms = uniform! {
+            u_light: [-1.0, 0.8, 0.9f32],
             matrix: matrix,
         };
 
         let mut frame = display.draw();
-        frame.clear_color(0.1, 0.1, 0.9, 1.0);
+        frame.clear_color_and_depth((0.06, 0.075, 0.95, 1.0), 1.0);
+
+        // from here on we're finally getting into all of this! :D
+        let params = glium::DrawParameters {
+            depth: glium::Depth {
+                test: glium::draw_parameters::DepthTest::IfLess, // These two lines define that each fragment's depth
+                write: true, // has to be less than the already buffered depth to be written into the buffer over the previous one.
+                ..Default::default()
+            },
+            ..Default::default()
+        };
 
         // Drawing the Triangle!
         frame.draw(
             (&positions, &normals),
             &indices,
-            &the_stage7_program(&display),
+            &the_stage8_program(&display),
             &uniforms,
-            &Default::default()
+            &params,
         ).unwrap();
 
         frame.finish().unwrap();
