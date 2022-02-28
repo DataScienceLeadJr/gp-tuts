@@ -136,6 +136,7 @@ pub fn run() {
                 write: true, // has to be less than the already buffered depth to be written into the buffer over the previous one.
                 ..Default::default()
             },
+            // stage 11: backface_culling: glium::draw_parameters::BackfaceCullingMode::CullClockwise, NOT APPLIED FOR THE TEAPOT BECAUSE IT IS NOT A "CLOSED" MODEL. (meaning the inside potentially has to "exist")
             ..Default::default()
         };
 
