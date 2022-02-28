@@ -15,6 +15,7 @@ mod stage7;
 mod stage8;
 mod stage9;
 mod stage10_w_11;
+mod stage12;
 
 mod teapot;
 
@@ -40,6 +41,7 @@ pub fn entrypoint(stage: Option<usize>) {
             8 => stage8::run(),
             9 => stage9::run(),
             10 | 11 => stage10_w_11::run(),
+            12 => stage12::run(),
             _ => todo!("I'M WORKING ON IT!"),
         }
     }
