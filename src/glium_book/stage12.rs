@@ -5,7 +5,7 @@ use crossterm::event::KeyCode;
 use glium::{glutin::{
     self,
     event::{KeyboardInput, VirtualKeyCode},
-}, buffer, uniform};
+}, buffer, uniform, Frame};
 use glium::{
     implement_vertex,
     Display,
@@ -26,11 +26,13 @@ pub fn vertex_shader_src() -> &'static str {
         out vec3 v_normal;
 
         uniform mat4 perspective;
-        uniform mat4 matrix;
+        uniform mat4 view;
+        uniform mat4 model;
 
         void main() {
-            v_normal = transpose(inverse(mat3(matrix))) * normal;
-            gl_Position = perspective * matrix * vec4(position, 1.0);
+            mat4 modelview = view * model;
+            v_normal = transpose(inverse(mat3(modelview))) * normal;
+            gl_Position = perspective * modelview * vec4(position, 1.0);
         }
     "#
 }
@@ -56,6 +58,69 @@ pub fn fragment_shader_src() -> &'static str {
 
 pub fn the_stage10_program(display: &Display) -> Program {
     Program::from_source(display as &dyn Facade, vertex_shader_src(), fragment_shader_src(), None).unwrap()
+}
+
+pub fn perspective_matrix(frame: &Frame) -> [[f32; 4]; 4] {
+    
+    let perspective = {
+        let (width, height) = frame.get_dimensions();
+        let aspect_ratio = height as f32 / width as f32;
+
+        let fov: f32 = 3.141592 / 3.0; // user parameter
+        let zfar = 1024.0; // can't move object farther or nearer than these
+        let znear = 0.1;  // two values here.
+
+        let f = 1.0 / (fov / 2.0).tan();
+
+        [
+            [f * aspect_ratio   ,   0.0 ,           0.0     ,               0.0],
+            [   0.0             ,   f   ,           0.0     ,               0.0],
+            [   0.0             ,   0.0 ,    (zfar+znear)/(zfar-znear)  ,   1.0],
+            [   0.0             ,   0.0 , -(2.0*zfar*znear)/(zfar-znear),   0.0],
+        ]
+    };
+
+    perspective
+}
+
+pub fn view_matrix(position: &[f32; 3], direction: &[f32; 3], up: &[f32; 3]) -> [[f32; 4]; 4] {
+    let f_norm = {
+        let f = direction;
+        let len = f[0] * f[0] + f[1] * f[1] + f[2] * f[2];
+        let len = len.sqrt();
+        [f[0] / len, f[1] / len, f[2] / len]
+    };
+
+    let s = [
+        up[1] * f_norm[2] - up[2] * f_norm[1],
+        up[2] * f_norm[0] - up[0] * f_norm[2],
+        up[0] * f_norm[1] - up[1] * f_norm[0],
+    ];
+
+    let s_norm = {
+        let len = s[0] * s[0] + s[1] * s[1] + s[2] * s[2];
+        let len = len.sqrt();
+        [s[0] / len, s[1] / len, s[2] / len]
+    };
+
+    let u = [
+        f_norm[1] * s_norm[2] - f_norm[2] * s_norm[1],
+        f_norm[2] * s_norm[0] - f_norm[0] * s_norm[2],
+        f_norm[0] * s_norm[1] - f_norm[1] * s_norm[0],
+    ];
+
+    let p = [
+        -position[0] * s_norm[0] - position[1] * s_norm[1] - position[2] * s_norm[2],
+        -position[0] * u[0] - position[1] * u[1] - position[2] * u[2],
+        -position[0] * f_norm[0] - position[1] * f_norm[1] - position[2] * f_norm[2],
+    ];
+
+    [
+        [s_norm[0], u[0], f_norm[0], 0.0],
+        [s_norm[1], u[1], f_norm[1], 0.0],
+        [s_norm[2], u[2], f_norm[2], 0.0],
+        [p[0], p[1], p[2], 1.0],
+    ]
 }
 
 pub fn run() {
@@ -97,36 +162,25 @@ pub fn run() {
 
         let mut frame = display.draw();
         frame.clear_color_and_depth((0.06, 0.075, 0.95, 1.0), 1.0);
-            
-        let perspective = {
-            let (width, height) = frame.get_dimensions();
-            let aspect_ratio = height as f32 / width as f32;
 
-            let fov: f32 = 3.141592 / 3.0; // user parameter
-            let zfar = 1024.0; // can't move object farther or nearer than these
-            let znear = 0.1;  // two values here.
-
-            let f = 1.0 / (fov / 2.0).tan();
-
-            [
-                [f * aspect_ratio   ,   0.0 ,           0.0     ,               0.0],
-                [   0.0             ,   f   ,           0.0     ,               0.0],
-                [   0.0             ,   0.0 ,    (zfar+znear)/(zfar-znear)  ,   1.0],
-                [   0.0             ,   0.0 , -(2.0*zfar*znear)/(zfar-znear),   0.0],
-            ]
-        };
-
-        let matrix = [
+        let model = [
             [0.01, 0.0, 0.0, 0.0],
             [0.0, 0.01, 0.0, 0.0],
             [0.0, 0.0, 0.01, 0.0],
             [0.0, 0.0, 2.0, 1.0f32],
         ];
 
+        let view = view_matrix(
+            &[2.0, -1.0, 1.0],
+            &[-2.0, 1.0, 1.0],
+            &[0.0, 1.0, 0.0]
+        );
+
         let uniforms = uniform! {
             u_light: [-1.0, 0.8, 0.9f32],
-            matrix: matrix,
-            perspective: perspective
+            model: model,
+            view: view,
+            perspective: perspective_matrix(&frame)
         };
 
         // from here on we're finally getting into all of this! :D
