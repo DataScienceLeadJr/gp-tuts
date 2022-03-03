@@ -201,6 +201,7 @@ pub fn run() {
         };
 
         // from here on we're finally getting into all of this! :D
+        // well no... we really didn't.. :/
         let params = glium::DrawParameters {
             depth: glium::Depth {
                 test: glium::draw_parameters::DepthTest::IfLess, // These two lines define that each fragment's depth
