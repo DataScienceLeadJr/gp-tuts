@@ -1,11 +1,11 @@
 #![allow(dead_code)]
-use std::hash::Hasher;
+use std::{hash::Hasher, io::Cursor};
 
 use crossterm::event::KeyCode;
 use glium::{glutin::{
     self,
     event::{KeyboardInput, VirtualKeyCode},
-}, buffer, uniform, Frame};
+}, buffer, uniform, Frame, texture::Texture2dDataSource};
 use glium::{
     implement_vertex,
     Display,
@@ -14,7 +14,14 @@ use glium::{
     Surface,
 };
 
-use super::teapot;
+#[derive(Copy, Clone)]
+struct Vertex {
+    position: [f32; 3],
+    normal: [f32; 3],
+    tex_coords: [f32; 2],
+}
+
+implement_vertex!(Vertex, position, normal, tex_coords);
 
 pub fn vertex_shader_src() -> &'static str {
     r#"
@@ -22,9 +29,11 @@ pub fn vertex_shader_src() -> &'static str {
 
         in vec3 position;
         in vec3 normal;
+        in vec2 tex_coords;
 
         out vec3 v_normal;
         out vec3 v_position;
+        out vec2 v_tex_coords;
 
         uniform mat4 perspective;
         uniform mat4 view;
@@ -35,6 +44,7 @@ pub fn vertex_shader_src() -> &'static str {
             v_normal = transpose(inverse(mat3(modelview))) * normal;
             gl_Position = perspective * modelview * vec4(position, 1.0);
             v_position = gl_Position.xyz / gl_Position.w;
+            v_tex_coords = tex_coords;
         }
     "#
 }
@@ -45,29 +55,46 @@ pub fn fragment_shader_src() -> &'static str {
 
         in vec3 v_normal;
         in vec3 v_position;
+        in vec2 v_tex_coords;
 
         out vec4 color;
 
         uniform vec3 u_light;
+        uniform sampler2D diffuse_tex;
+        uniform sampler2D normal_tex;
 
-        const vec3 ambient_color = vec3(0.28, 0.015, 0.0);
-        const vec3 diffuse_color = vec3(0.95, 0.01, 0.06);
         const vec3 specular_color = vec3(1.0, 0.975, 0.925);
 
-        //old values
-        const vec3 dark_color = vec3(0.555, 0.007, 0.075);
-        const vec3 regular_color = vec3(1.0, 0.09, 0.045);
+        mat3 cotangent_frame(vec3 normal, vec3 pos, vec2 uv) {
+            vec3 dp1 = dFdx(pos);
+            vec3 dp2 = dFdy(pos);
+            vec2 duv1 = dFdx(uv);
+            vec2 duv2 = dFdy(uv);
+
+            vec3 dp1perp = cross(normal, dp1);
+            vec3 dp2perp = cross(dp2, normal);
+
+            vec3 T = dp2perp * duv1.x + dp1perp * duv2.x;
+            vec3 B = dp2perp * duv1.y + dp1perp * duv2.y;
+            
+            float invmax = inversesqrt(max(dot(T, T), dot(B, B)));
+            return mat3(T * invmax, B * invmax, normal);
+        }
 
         void main() {
+            vec3 normal_map = texture(normal_tex, v_tex_coords).rgb;
+            mat3 tbn = cotangent_frame(v_normal, v_position, v_tex_coords);
+            vec3 real_normal = normalize(tbn * -(normal_map * 2.0 - 1.0));
             float diffuse = max(dot(normalize(v_normal), normalize(u_light)), 0.0);
 
             vec3 camera_dir = normalize(-v_position);
             vec3 half_direction = normalize(normalize(u_light) + camera_dir); // relationship between lightsource and camera angle for the object/fragment
 
             // dot = cosine
-            float specular = pow(max(dot(half_direction, normalize(v_normal)), 0.0), 16.0); // 16 = specular coefficient, determining the "dropoff rate" for specular reflectio.
+            float specular = pow(max(dot(half_direction, normalize(real_normal)), 0.0), 16.0); // 16 = specular coefficient, determining the "dropoff rate" for specular reflectio.
             
-            // things are auto-clamped to 1.0
+            vec3 diffuse_color = texture(diffuse_tex, v_tex_coords).rgb;
+            vec3 ambient_color = diffuse_color * 0.1;
             color = vec4(ambient_color + diffuse * diffuse_color + specular * specular_color, 1.0);
         }
     "#
@@ -150,9 +177,26 @@ pub fn run() {
         &event_loop
     ).unwrap();
 
-    let positions = glium::VertexBuffer::new(&display, &teapot::VERTICES).unwrap();
-    let normals = glium::VertexBuffer::new(&display, &teapot::NORMALS).unwrap();
-    let indices = glium::IndexBuffer::new(&display, glium::index::PrimitiveType::TrianglesList, &teapot::INDICES).unwrap();
+    let image = image::load(Cursor::new(&include_bytes!("D:\\Projects\\Rust\\gp-tuts\\assets\\textures\\tuto-14-diffuse.jpg")),
+                                            image::ImageFormat::Jpeg).unwrap().to_rgba8();
+    let image_dimensions = image.dimensions();
+    let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&image.into_raw(), image_dimensions);
+    let diffuse_texture = glium::texture::texture2d::Texture2d::new(&display, image).unwrap();
+
+
+    let nm_image = image::load(Cursor::new(&include_bytes!("D:\\Projects\\Rust\\gp-tuts\\assets\\textures\\tuto-14-normal.png")),
+                                                image::ImageFormat::Png).unwrap().to_rgba8();
+    let image_dimensions = nm_image.dimensions();
+    let image = glium::texture::RawImage2d::from_raw_rgba_reversed(&nm_image.into_raw(), image_dimensions);
+    let normal_map = glium::texture::texture2d::Texture2d::new(&display, image).unwrap();
+
+    // This defines 2 triangles IF we use it in a "triangle strip" index!
+    let quad = glium::vertex::VertexBuffer::new(&display, &[
+            Vertex { position: [-1.0, 1.0, 0.0], normal: [0.0, 0.0, -1.0], tex_coords: [0.0, 1.0] },
+            Vertex { position: [ 1.0, 1.0, 0.0], normal: [0.0, 0.0, -1.0], tex_coords: [1.0, 1.0] },
+            Vertex { position: [-1.0,-1.0, 0.0], normal: [0.0, 0.0, -1.0], tex_coords: [0.0, 0.0] },
+            Vertex { position: [ 1.0,-1.0, 0.0], normal: [0.0, 0.0, -1.0], tex_coords: [1.0, 0.0] },
+        ]).unwrap();
 
     event_loop.run(move |event, _, control_flow| {
 
@@ -181,15 +225,15 @@ pub fn run() {
         frame.clear_color_and_depth((0.06, 0.075, 0.95, 1.0), 1.0);
 
         let model = [
-            [0.01, 0.0, 0.0, 0.0],
-            [0.0, 0.01, 0.0, 0.0],
-            [0.0, 0.0, 0.01, 0.0],
-            [0.0, 0.0, 2.0, 1.0f32],
+            [0.8, 0.0, 0.0, 0.0],
+            [0.0,0.8, 0.0, 0.0],
+            [0.0, 0.0, 0.8, 0.0],
+            [0.0, 0.0, 2.5, 1.0f32],
         ];
 
         let view = view_matrix(
-            &[1.7, -1.2, 1.0],
-            &[-2.0, 1.3, 1.0],
+            &[0.8, 0.4, 0.6],
+            &[-0.4, -0.2, 1.0],
             &[0.0, 1.0, 0.0]
         );
 
@@ -197,7 +241,9 @@ pub fn run() {
             u_light: [-1.0, 0.8, 0.9f32],
             model: model,
             view: view,
-            perspective: perspective_matrix(&frame)
+            perspective: perspective_matrix(&frame),
+            diffuse_tex: &diffuse_texture,
+            normal_tex: &normal_map
         };
 
         // from here on we're finally getting into all of this! :D
@@ -214,8 +260,8 @@ pub fn run() {
 
         // Drawing the Quad!
         frame.draw(
-            (&positions, &normals),
-            &indices,
+            &quad,
+            glium::index::NoIndices(glium::index::PrimitiveType::TriangleStrip),
             &the_stage13_program(&display),
             &uniforms,
             &params,
