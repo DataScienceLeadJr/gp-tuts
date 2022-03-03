@@ -212,7 +212,7 @@ pub fn run() {
             ..Default::default()
         };
 
-        // Drawing the Triangle!
+        // Drawing the Quad!
         frame.draw(
             (&positions, &normals),
             &indices,

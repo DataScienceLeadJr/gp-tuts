@@ -99,7 +99,7 @@ pub fn run() {
         let mut frame = display.draw();
         frame.clear_color(0.1, 0.1, 0.9, 1.0);
 
-        // Drawing the Triangle!
+        // Drawing the Teapot!
         frame.draw(
             (&positions, &normals),
             &indices,

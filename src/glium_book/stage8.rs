@@ -110,7 +110,7 @@ pub fn run() {
         frame.clear_color(0.06, 0.075, 0.95, 1.0);
 
 
-        // Drawing the Triangle!
+        // Drawing the Teapot!
         frame.draw(
             (&positions, &normals),
             &indices,

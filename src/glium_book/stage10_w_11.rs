@@ -140,7 +140,7 @@ pub fn run() {
             ..Default::default()
         };
 
-        // Drawing the Triangle!
+        // Drawing the Teapot!
         frame.draw(
             (&positions, &normals),
             &indices,
