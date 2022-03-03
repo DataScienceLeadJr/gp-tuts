@@ -10,6 +10,7 @@ use crossterm::{
 };
 
 mod glium_book;
+mod learn_wgpu;
 
 /// Collective main entrypoint for running different graphics programming tutorial stages
 #[derive(Parser, Debug)]
@@ -33,6 +34,7 @@ fn main() -> crossterm::Result<()>{
 
     match args.tutorial.to_lowercase().as_str() {
         glium_book::GLIUM => glium_book::entrypoint(args.stage),
+        learn_wgpu::LEARN_WGPU => glium_book::entrypoint(args.stage),
         _ => panic!("That's not even a tutorial! For God's Sake!..")
     };
 
